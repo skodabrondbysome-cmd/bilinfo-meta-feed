@@ -280,6 +280,17 @@ def main():
         print(f"  skipped {vid} {title}: {why}")
     if raw:
         print("Keys seen on first listing:", ", ".join(sorted(raw[0].keys())))
+        dealers = {}
+        for v in raw:
+            name = f"{first(v, 'DealerName')} ({first(v, 'DealerAddressCity')}, id {first(v, 'DealerId')})"
+            dealers[name] = dealers.get(name, 0) + 1
+        print("Dealers in this Bilinfo account:")
+        for name, n in sorted(dealers.items(), key=lambda x: -x[1]):
+            print(f"  {n:4d}  {name}")
+        with_pics = next((v for v in raw if first(v, "Pictures")), None)
+        if with_pics:
+            print("Example Pictures entry:", json.dumps(first(with_pics, "Pictures")[:1],
+                                                         ensure_ascii=False)[:300])
 
     if len(rows) < args.min_vehicles:
         sys.exit(f"Only {len(rows)} usable cars (< --min-vehicles {args.min_vehicles}); "
