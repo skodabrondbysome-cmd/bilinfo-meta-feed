@@ -1,0 +1,43 @@
+name: Update Meta vehicle feed from Bilinfo
+
+on:
+  schedule:
+    - cron: "15 4 * * *"   # daily 04:15 UTC (05:15/06:15 Danish time), before Meta's fetch
+  workflow_dispatch: {}     # "Run workflow" button for manual runs
+
+permissions:
+  contents: write
+
+concurrency:
+  group: meta-feed
+  cancel-in-progress: false
+
+jobs:
+  build-feed:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - run: pip install requests
+
+      - name: Build feed from Bilinfo
+        env:
+          BILINFO_USER: ${{ secrets.BILINFO_USER }}
+          BILINFO_PASSWORD: ${{ secrets.BILINFO_PASSWORD }}
+        run: python bilinfo_to_meta_feed.py --out meta_vehicle_feed.csv
+
+      - name: Commit feed if it changed
+        run: |
+          git config user.name  "feed-bot"
+          git config user.email "feed-bot@users.noreply.github.com"
+          git add meta_vehicle_feed.csv
+          if git diff --cached --quiet; then
+            echo "No stock changes today."
+          else
+            git commit -m "Update vehicle feed $(date -u +%F)"
+            git push
+          fi
